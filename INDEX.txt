@@ -1,0 +1,211 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                  RMI BANKING SYSTEM - INDEX                          ║
+║              Hệ thống chuyển khoản với đồng bộ 2 Database            ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+📚 MỤC LỤC TÀI LIỆU
+
+1️⃣  QUICK_START.md
+   └─> Hướng dẫn nhanh cho người mới bắt đầu
+   └─> Các bước cơ bản để chạy được ứng dụng
+   └─> Troubleshooting nhanh
+
+2️⃣  README.md
+   └─> Giới thiệu tổng quan dự án
+   └─> Tính năng chính
+   └─> Cấu trúc project
+   └─> Hướng dẫn cài đặt cơ bản
+
+3️⃣  HUONG_DAN_CAI_DAT.md
+   └─> Hướng dẫn chi tiết từng bước
+   └─> Cấu hình MySQL cho phép remote
+   └─> Setup Firewall
+   └─> Xử lý lỗi chi tiết
+
+4️⃣  ARCHITECTURE.md
+   └─> Kiến trúc hệ thống
+   └─> Sơ đồ luồng xử lý
+   └─> Database schema
+   └─> Class diagram
+   └─> Security & Performance
+
+5️⃣  database_setup.sql
+   └─> Script tạo database
+   └─> Tạo bảng accounts
+   └─> Insert dữ liệu mẫu
+   └─> Chạy trên CẢ 2 máy MySQL
+
+═════════════════════════════════════════════════════════════════════
+
+🛠️ SCRIPTS & TOOLS
+
+✅ setup_firewall.ps1
+   └─> Tự động mở port 1099 (RMI) và 3306 (MySQL)
+   └─> Chạy với quyền Administrator
+   └─> PowerShell script
+
+✅ check_connection.ps1
+   └─> Kiểm tra kết nối đến MySQL và RMI Server
+   └─> Test trước khi chạy ứng dụng
+   └─> PowerShell script
+
+✅ run_server.bat
+   └─> Khởi động RMI Server
+   └─> Windows batch file
+   └─> Double-click để chạy
+
+✅ run_client.bat
+   └─> Khởi động Client UI
+   └─> Windows batch file
+   └─> Double-click để chạy
+
+═════════════════════════════════════════════════════════════════════
+
+📁 CẤU TRÚC SOURCE CODE
+
+src/
+├── rmi/
+│   ├── BankInterface.java      ← RMI Remote Interface
+│   └── Account.java            ← Model tài khoản
+│
+├── database/
+│   ├── DatabaseConfig.java     ← Cấu hình kết nối (SỬA FILE NÀY!)
+│   └── DatabaseHandler.java    ← Xử lý database, transaction
+│
+├── server/
+│   └── BankServer.java         ← RMI Server (CHẠY ĐẦU TIÊN)
+│
+└── client/
+    └── BankClientUI.java       ← Swing UI Client (CHẠY SAU)
+
+═════════════════════════════════════════════════════════════════════
+
+🚀 CÁCH SỬ DỤNG NHANH
+
+Bước 1: Setup Database (trên 2 máy MySQL)
+   $ mysql -u root -p < database_setup.sql
+
+Bước 2: Cấu hình (SỬA FILE DatabaseConfig.java)
+   - Đổi DB1_HOST thành IP máy MySQL 1
+   - Đổi DB2_HOST thành IP máy MySQL 2
+   - Đổi password nếu cần
+
+Bước 3: Mở Firewall (PowerShell as Admin)
+   PS> .\setup_firewall.ps1
+
+Bước 4: Test kết nối
+   PS> .\check_connection.ps1
+
+Bước 5: Chạy Server (trong Eclipse hoặc dùng bat file)
+   - Right-click BankServer.java → Run As → Java Application
+   - Hoặc: Double-click run_server.bat
+
+Bước 6: Chạy Client (trong Eclipse hoặc dùng bat file)
+   - Right-click BankClientUI.java → Run As → Java Application
+   - Hoặc: Double-click run_client.bat
+
+Bước 7: Sử dụng
+   - Nhập IP Server → Click "Kết nối"
+   - Chọn tài khoản → Nhập số tiền → "Chuyển khoản"
+   - Kiểm tra đồng bộ trên 2 database!
+
+═════════════════════════════════════════════════════════════════════
+
+⚙️ YÊU CẦU HỆ THỐNG
+
+✔ Java JDK 8 trở lên
+✔ MySQL Server 5.7+ (trên 2 máy khác nhau)
+✔ MySQL Connector/J (JDBC Driver)
+✔ Eclipse IDE hoặc IntelliJ IDEA
+✔ Windows 10+ (hoặc Linux/Mac)
+✔ Network connection giữa các máy
+
+═════════════════════════════════════════════════════════════════════
+
+🎯 TÍNH NĂNG CHÍNH
+
+✅ Chuyển khoản giữa các tài khoản
+✅ Cập nhật đồng bộ lên 2 database (Two-Phase Commit)
+✅ Rollback tự động nếu có lỗi
+✅ Giao diện Swing UI thân thiện
+✅ Tạo tài khoản mới (đồng bộ 2 DB)
+✅ Xem danh sách tài khoản và số dư
+✅ Kiểm tra số dư trước khi chuyển
+✅ Transaction-based (ACID compliance)
+
+═════════════════════════════════════════════════════════════════════
+
+🔧 XỬ LÝ LỖI NHANH
+
+❌ "Connection refused" → Kiểm tra Server đã chạy chưa
+❌ "Access denied" → Sai password, sửa DatabaseConfig.java
+❌ "ClassNotFoundException" → Thiếu MySQL JDBC Driver
+❌ "Port already in use" → Port 1099 bị chiếm, đóng ứng dụng khác
+❌ "Unknown host" → Sai IP, kiểm tra lại DatabaseConfig.java
+
+═════════════════════════════════════════════════════════════════════
+
+📞 LIÊN HỆ & HỖ TRỢ
+
+Nếu gặp vấn đề:
+1. Đọc HUONG_DAN_CAI_DAT.md (hướng dẫn chi tiết)
+2. Chạy check_connection.ps1 (kiểm tra kết nối)
+3. Xem ARCHITECTURE.md (hiểu kiến trúc hệ thống)
+4. Check Console log (xem lỗi chi tiết)
+
+═════════════════════════════════════════════════════════════════════
+
+📊 DEMO DATA (Có sẵn sau khi chạy database_setup.sql)
+
+┌──────────┬────────────────┬──────────────┐
+│ Số TK    │ Tên chủ TK     │ Số dư (VND)  │
+├──────────┼────────────────┼──────────────┤
+│ ACC001   │ Nguyen Van A   │ 10,000,000   │
+│ ACC002   │ Tran Thi B     │  5,000,000   │
+│ ACC003   │ Le Van C       │  8,000,000   │
+│ ACC004   │ Pham Thi D     │ 15,000,000   │
+│ ACC005   │ Hoang Van E    │  3,000,000   │
+└──────────┴────────────────┴──────────────┘
+
+Thử chuyển từ ACC001 → ACC002: 1,000,000 VND
+Sau đó check cả 2 database để thấy sự đồng bộ!
+
+═════════════════════════════════════════════════════════════════════
+
+🌟 BẮT ĐẦU TỪ ĐÂU?
+
+👉 Người mới: Đọc QUICK_START.md
+👉 Cài đặt chi tiết: Đọc HUONG_DAN_CAI_DAT.md
+👉 Hiểu kiến trúc: Đọc ARCHITECTURE.md
+👉 Tổng quan: Đọc README.md
+
+═════════════════════════════════════════════════════════════════════
+
+💡 MẸO QUAN TRỌNG
+
+⭐ Luôn chạy Server TRƯỚC, Client SAU
+⭐ Kiểm tra 2 database có cùng dữ liệu trước khi bắt đầu
+⭐ Sử dụng check_connection.ps1 để test trước khi chạy
+⭐ File QUAN TRỌNG nhất cần sửa: DatabaseConfig.java
+⭐ Port cần mở: 1099 (RMI) và 3306 (MySQL)
+
+═════════════════════════════════════════════════════════════════════
+
+🎓 HỌC TỪ PROJECT NÀY
+
+✓ Java RMI (Remote Method Invocation)
+✓ JDBC & Database Programming
+✓ Transaction Management (Two-Phase Commit)
+✓ Swing UI Development
+✓ Client-Server Architecture
+✓ Network Programming
+✓ Database Synchronization
+✓ Error Handling & Rollback
+
+═════════════════════════════════════════════════════════════════════
+
+🚀 CHÚC BẠN THÀNH CÔNG! 🚀
+
+═════════════════════════════════════════════════════════════════════
+Version: 1.0 | Created: 2025 | For Educational Purpose
+═════════════════════════════════════════════════════════════════════
