@@ -35,9 +35,33 @@
    └─> Insert dữ liệu mẫu
    └─> Chạy trên CẢ 2 máy MySQL
 
+6️⃣  SETUP_WINDOWS_XAMPP.md
+   └─> Hướng dẫn cài XAMPP trên Windows
+   └─> Cấu hình MySQL cho remote access
+   └─> Mở firewall, test kết nối
+   └─> Chi tiết từng bước với screenshot text
+
+7️⃣  SETUP_LINUX_MARIADB.md
+   └─> Hướng dẫn cài MariaDB trên Linux
+   └─> Tại sao chọn MariaDB (nhẹ, nhanh, ổn định)
+   └─> Cấu hình, bảo mật, backup
+   └─> Best practices cho production
+
+8️⃣  SETUP_2_MACHINES.md
+   └─> Kết nối 2 máy: Windows + Linux
+   └─> Test kết nối network & database
+   └─> Cấu hình DatabaseConfig.java
+   └─> Verify đồng bộ database
+
+9️⃣  COMPARISON_DATABASE.md
+   └─> So sánh MySQL vs MariaDB vs XAMPP
+   └─> Benchmark hiệu năng
+   └─> Khuyến nghị cho từng trường hợp
+   └─> Bảng quyết định nhanh
+
 ═════════════════════════════════════════════════════════════════════
 
-🛠️ SCRIPTS & TOOLS
+🛠️ SCRIPTS & TOOLS (Windows)
 
 ✅ setup_firewall.ps1
    └─> Tự động mở port 1099 (RMI) và 3306 (MySQL)
@@ -82,7 +106,29 @@ src/
 
 🚀 CÁCH SỬ DỤNG NHANH
 
-Bước 1: Setup Database (trên 2 máy MySQL)
+════════════════════════════════════════════
+QUAN TRỌNG: ĐỌC THEO THỨ TỰ
+════════════════════════════════════════════
+
+🔹 BƯỚC 0: Chọn database cho Linux
+   👉 Đọc: COMPARISON_DATABASE.md
+   👉 Khuyến nghị: MariaDB (nhẹ, nhanh, ổn định)
+
+🔹 MÁY WINDOWS:
+   👉 Đọc: SETUP_WINDOWS_XAMPP.md
+   👉 Cài XAMPP, setup MySQL
+
+🔹 MÁY LINUX:
+   👉 Đọc: SETUP_LINUX_MARIADB.md
+   👉 Cài MariaDB (KHUYẾN NGHỊ)
+
+🔹 KẾT NỐI 2 MÁY:
+   👉 Đọc: SETUP_2_MACHINES.md
+   👉 Test, cấu hình, verify đồng bộ
+
+════════════════════════════════════════════
+
+Bước 1: Setup Database (trên 2 máy)
    $ mysql -u root -p < database_setup.sql
 
 Bước 2: Cấu hình (SỬA FILE DatabaseConfig.java)
