@@ -6,18 +6,18 @@ package database;
 public class DatabaseConfig {
     
     // Database 1 - Máy chủ chính
-    public static final String DB1_HOST = "localhost"; // Thay bằng IP máy 1
+    public static final String DB1_HOST = "192.168.1.7"; // Thay bằng IP máy 1 win
     public static final String DB1_PORT = "3306";
     public static final String DB1_NAME = "bank_db";
-    public static final String DB1_USER = "root";
-    public static final String DB1_PASSWORD = "root";
+    public static final String DB1_USER = "rmiuser1";
+    public static final String DB1_PASSWORD = "rmi1";
     
-    // Database 2 - Máy chủ dự phòng
+    // Database 2 - Máy chủ dự phòng (XAMPP trên máy này)
     public static final String DB2_HOST = "localhost"; // Thay bằng IP máy 2
     public static final String DB2_PORT = "3306";
     public static final String DB2_NAME = "bank_db";
-    public static final String DB2_USER = "root";
-    public static final String DB2_PASSWORD = "root";
+    public static final String DB2_USER = "rmiuser1";
+    public static final String DB2_PASSWORD = "rmi1";
     
     public static String getDB1Url() {
         return String.format("jdbc:mysql://%s:%s/%s?useSSL=false&serverTimezone=UTC", 

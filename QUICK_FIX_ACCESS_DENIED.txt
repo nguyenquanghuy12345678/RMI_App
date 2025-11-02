@@ -1,0 +1,182 @@
+═══════════════════════════════════════════════════════════
+  HƯỚNG DẪN FIX NHANH - Access Denied Error
+═══════════════════════════════════════════════════════════
+
+🔴 LỖI: Access denied for user ''@'...' (using password: NO)
+
+═══════════════════════════════════════════════════════════
+
+📋 CHECKLIST FIX (Làm theo thứ tự):
+
+BƯỚC 1: Kiểm tra DatabaseConfig.java
+────────────────────────────────────
+☐ Mở file: src/database/DatabaseConfig.java
+
+☐ Kiểm tra DB2_USER phải là "rmiuser1"
+  ✓ Đã sửa: DB2_USER = "rmiuser1"
+  
+☐ Kiểm tra DB2_PASSWORD phải là "rmi1"
+  ✓ Đã sửa: DB2_PASSWORD = "rmi1"
+
+☐ SAVE file (Ctrl + S)
+
+
+BƯỚC 2: Tạo user trong XAMPP MySQL
+────────────────────────────────────
+Chọn 1 trong 2 cách:
+
+CÁCH 1: Dùng phpMyAdmin (Dễ)
+────────────────────────────
+☐ Mở: http://localhost/phpmyadmin
+
+☐ Click: User accounts → Add user account
+
+☐ Điền:
+  User name: rmiuser1
+  Host: Any host (%)
+  Password: rmi1
+  
+☐ Tick: Grant all privileges on database "bank_db"
+
+☐ Click: Go
+
+☐ Lặp lại với Host: localhost
+
+
+CÁCH 2: Dùng Command Line (Nhanh)
+──────────────────────────────────
+☐ Mở XAMPP Control Panel → Shell
+
+☐ Chạy: mysql -u root -p
+  (Nhấn Enter nếu hỏi password)
+
+☐ Chạy lệnh:
+  
+  CREATE USER 'rmiuser1'@'%' IDENTIFIED BY 'rmi1';
+  CREATE USER 'rmiuser1'@'localhost' IDENTIFIED BY 'rmi1';
+  
+  GRANT ALL PRIVILEGES ON bank_db.* TO 'rmiuser1'@'%';
+  GRANT ALL PRIVILEGES ON bank_db.* TO 'rmiuser1'@'localhost';
+  
+  FLUSH PRIVILEGES;
+  
+  exit;
+
+
+BƯỚC 3: Test kết nối
+────────────────────
+☐ Chạy script: .\test_mysql_user.ps1
+
+☐ Hoặc test thủ công:
+  mysql -u rmiuser1 -prmi1 bank_db
+
+☐ Kết quả: Phải đăng nhập được (thấy mysql>)
+
+
+BƯỚC 4: Restart ứng dụng
+────────────────────────
+☐ ĐÓNG RMI Server (nếu đang chạy)
+
+☐ ĐÓNG Client UI (nếu đang chạy)
+
+☐ Trong Eclipse:
+  - Right-click project → Clean...
+  - Click OK
+
+☐ Chạy lại Server:
+  - Right-click BankServer.java
+  - Run As → Java Application
+
+☐ Chạy lại Client:
+  - Right-click BankClientUI.java
+  - Run As → Java Application
+
+
+BƯỚC 5: Test tạo tài khoản
+────────────────────────────
+☐ Trong Client UI → Tab "Tạo tài khoản"
+
+☐ Nhập:
+  Số TK: 0404040404
+  Tên: Nguyen Quang Huy
+  Số dư: 0
+
+☐ Click "Tạo tài khoản"
+
+☐ Kết quả: "Tạo tài khoản thành công!" ✓
+
+
+═══════════════════════════════════════════════════════════
+
+✅ KIỂM TRA CUỐI CÙNG:
+
+☐ File DatabaseConfig.java đã Save
+☐ User rmiuser1 đã tồn tại trên XAMPP
+☐ User có quyền ALL PRIVILEGES trên bank_db
+☐ Test kết nối mysql -u rmiuser1 -prmi1 THÀNH CÔNG
+☐ RMI Server đã restart
+☐ Client UI đã restart
+☐ Tạo tài khoản THÀNH CÔNG
+
+═══════════════════════════════════════════════════════════
+
+🎯 LỆNH NHANH (Copy-paste):
+
+-- Trong MySQL (XAMPP Shell: mysql -u root -p)
+CREATE USER 'rmiuser1'@'%' IDENTIFIED BY 'rmi1';
+CREATE USER 'rmiuser1'@'localhost' IDENTIFIED BY 'rmi1';
+GRANT ALL PRIVILEGES ON bank_db.* TO 'rmiuser1'@'%';
+GRANT ALL PRIVILEGES ON bank_db.* TO 'rmiuser1'@'localhost';
+FLUSH PRIVILEGES;
+
+-- Test
+mysql -u rmiuser1 -prmi1 bank_db
+
+═══════════════════════════════════════════════════════════
+
+📁 FILE THAM KHẢO:
+
+- FIX_ACCESS_DENIED.md       ← Hướng dẫn chi tiết
+- FIX_DATABASE_USER.sql      ← SQL script
+- test_mysql_user.ps1        ← Test script
+
+═══════════════════════════════════════════════════════════
+
+💡 NGUYÊN NHÂN LỖI:
+
+Lỗi "Access denied for user ''@'...' (using password: NO)" 
+có nghĩa:
+
+1. Username đang RỖNG ('')
+2. Password KHÔNG được sử dụng (NO)
+3. User rmiuser1 CHƯA TỒN TẠI trên XAMPP localhost
+
+Giải pháp: TẠO USER và CẤP QUYỀN như hướng dẫn trên.
+
+═══════════════════════════════════════════════════════════
+
+🎉 SAU KHI FIX XONG:
+
+Console hiển thị:
+  "Tạo tài khoản mới: 0404040404 - Nguyen Quang Huy"
+  
+UI hiển thị:
+  "✓ Tạo tài khoản thành công!
+   Đã cập nhật đồng bộ trên 2 database."
+
+Database có data:
+  SELECT * FROM accounts WHERE account_number = '0404040404';
+  → 0404040404 | Nguyen Quang Huy | 0.00
+
+═══════════════════════════════════════════════════════════
+
+❓ NẾU VẪN LỖI:
+
+1. Kiểm tra file DatabaseConfig.java đã SAVE chưa
+2. Chạy: .\test_mysql_user.ps1 để debug
+3. Đọc: FIX_ACCESS_DENIED.md (hướng dẫn chi tiết)
+4. Restart cả Server và Client
+
+═══════════════════════════════════════════════════════════
+RMI Banking System - Quick Fix Guide
+═══════════════════════════════════════════════════════════

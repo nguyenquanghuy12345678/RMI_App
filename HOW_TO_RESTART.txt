@@ -1,0 +1,230 @@
+# ========================================
+# HƯỚNG DẪN RESTART ĐÚNG CÁCH
+# ========================================
+
+## VẤN ĐỀ:
+Lỗi vẫn còn vì Server/Client đang chạy CODE CŨ.
+File DatabaseConfig.java đã sửa nhưng chưa được load lại.
+
+## GIẢI PHÁP: RESTART ĐÚNG CÁCH
+
+### BƯỚC 1: STOP hoàn toàn (QUAN TRỌNG!)
+──────────────────────────────────────────
+
+Trong Eclipse:
+
+1. Nhìn xuống **Console** (phía dưới)
+
+2. Bạn sẽ thấy nhiều TAB:
+   ┌────────────────────────────────────────┐
+   │ [BankServer]  [BankClientUI]  [...]   │
+   └────────────────────────────────────────┘
+
+3. Click vào tab [BankServer]
+
+4. Click nút STOP (hình vuông đỏ ■) ở góc phải console
+   ┌──────────────────────────────────┐
+   │ Console  [▶] [■] [🔄] [×]       │
+   └──────────────────────────────────┘
+                    ↑
+                  CLICK ĐÂY
+
+5. Lặp lại với tab [BankClientUI] → Click STOP
+
+6. Đợi 2-3 giây để process kết thúc hoàn toàn
+
+
+### BƯỚC 2: CLEAN PROJECT (Xóa .class cũ)
+──────────────────────────────────────────
+
+Trong Eclipse:
+
+1. Click menu: Project → Clean...
+
+2. Chọn: ○ Clean all projects
+   Hoặc: ● Clean projects selected below
+         ☑ RMI_App
+
+3. Click: [Clean]
+
+4. Đợi build xong (progress bar ở góc phải dưới)
+
+
+### BƯỚC 3: VERIFY file DatabaseConfig.java
+──────────────────────────────────────────
+
+1. Mở file: src/database/DatabaseConfig.java
+
+2. Kiểm tra dòng 15-16:
+   ```java
+   public static final String DB2_USER = "rmiuser1";
+   public static final String DB2_PASSWORD = "rmi1";
+   ```
+
+3. Nếu KHÔNG phải như trên → Sửa lại và SAVE (Ctrl+S)
+
+
+### BƯỚC 4: BUILD lại project
+──────────────────────────────────────────
+
+Eclipse tự động build, nhưng để chắc chắn:
+
+1. Right-click vào project RMI_App
+
+2. Chọn: Build Project
+
+3. Đợi build xong
+
+
+### BƯỚC 5: RUN lại Server (QUAN TRỌNG!)
+──────────────────────────────────────────
+
+1. Trong Package Explorer, tìm:
+   src/server/BankServer.java
+
+2. Right-click → Run As → Java Application
+
+3. Console hiển thị:
+   ```
+   =================================
+   RMI Bank Server đã khởi động!
+   Server đang lắng nghe trên port 1099
+   Service name: BankService
+   =================================
+   ```
+
+4. ✓ Server đã chạy với CODE MỚI
+
+
+### BƯỚC 6: RUN lại Client
+──────────────────────────────────────────
+
+1. Trong Package Explorer, tìm:
+   src/client/BankClientUI.java
+
+2. Right-click → Run As → Java Application
+
+3. Giao diện UI hiện ra
+
+4. Nhập Server Host: localhost (hoặc IP)
+
+5. Click [Kết nối]
+
+6. Status: "Đã kết nối" (màu xanh)
+
+
+### BƯỚC 7: TEST lại
+──────────────────────────────────────────
+
+Tab "Tạo tài khoản":
+- Số TK: 0303030303
+- Tên: NguyenQuangHuy
+- Số dư: 0
+- Click [Tạo tài khoản]
+
+✓ Kết quả: "Tạo tài khoản thành công!"
+
+
+## ========================================
+## LƯU Ý QUAN TRỌNG:
+## ========================================
+
+⚠️ Mỗi khi SỬA file .java, phải:
+
+1. STOP Server/Client
+2. Clean Project
+3. Chạy lại Server
+4. Chạy lại Client
+
+⚠️ KHÔNG chỉ đóng cửa sổ UI!
+   Phải click nút STOP trong Console!
+
+⚠️ Kiểm tra Console tab:
+   - Nếu vẫn thấy output cũ → Chưa stop đúng
+   - Phải thấy "[Terminated]" bên cạnh tên tab
+
+
+## ========================================
+## CÁCH KIỂM TRA ĐÃ STOP CHƯA:
+## ========================================
+
+Nhìn vào Console tab:
+
+✓ ĐÃ STOP:
+  [BankServer <terminated>]
+  [BankClientUI <terminated>]
+
+✗ CHƯA STOP (vẫn chạy):
+  [BankServer]
+  [BankClientUI]
+
+
+## ========================================
+## NẾU VẪN BỊ LỖI SAU KHI RESTART:
+## ========================================
+
+1. Kiểm tra đã tạo user trong MySQL chưa:
+   
+   mysql -u root -p
+   > SELECT User, Host FROM mysql.user WHERE User = 'rmiuser1';
+   
+   Phải có 2 dòng:
+   rmiuser1    %
+   rmiuser1    localhost
+
+2. Nếu chưa có, chạy:
+   
+   CREATE USER 'rmiuser1'@'%' IDENTIFIED BY 'rmi1';
+   CREATE USER 'rmiuser1'@'localhost' IDENTIFIED BY 'rmi1';
+   GRANT ALL PRIVILEGES ON bank_db.* TO 'rmiuser1'@'%';
+   GRANT ALL PRIVILEGES ON bank_db.* TO 'rmiuser1'@'localhost';
+   FLUSH PRIVILEGES;
+
+3. Test kết nối:
+   
+   mysql -u rmiuser1 -prmi1 bank_db
+
+4. Restart lại Server + Client như hướng dẫn trên
+
+
+## ========================================
+## DEBUG: Kiểm tra user đang dùng
+## ========================================
+
+Thêm dòng này vào DatabaseHandler.java (dòng 20):
+
+```java
+private Connection getConnection(String url, String user, String password) throws SQLException {
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        System.out.println("DEBUG: Connecting with user=" + user + ", url=" + url); // ← THÊM DÒNG NÀY
+        return DriverManager.getConnection(url, user, password);
+    } catch (ClassNotFoundException e) {
+```
+
+Sau đó Save, Clean, Restart Server.
+
+Khi chạy, Console sẽ hiển thị:
+```
+DEBUG: Connecting with user=rmiuser1, url=jdbc:mysql://...
+```
+
+Nếu hiển thị user=null hoặc user='' → Code cũ vẫn đang chạy!
+
+
+## ========================================
+## TÓM TẮT NHANH:
+## ========================================
+
+1. STOP Server (click ■ trong Console)
+2. STOP Client (click ■ trong Console)
+3. Project → Clean...
+4. Chạy lại BankServer.java
+5. Chạy lại BankClientUI.java
+6. Test tạo tài khoản
+
+⚠️ QUAN TRỌNG: Phải STOP, không phải chỉ đóng cửa sổ!
+
+========================================
+RMI Banking - Restart Guide
+========================================

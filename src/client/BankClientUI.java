@@ -14,17 +14,24 @@ import rmi.Account;
 import rmi.BankInterface;
 
 /**
- * Giao diện UI cho ứng dụng ngân hàng RMI
+ * Giao diện UI cho ứng dụng ngân hàng RMI - Phiên bản cải tiến
+ * - Quản lý kết nối tốt hơn
+ * - Cleanup resources khi đóng
+ * - Validation đầu vào
+ * - Progress indicators
  */
 public class BankClientUI extends JFrame {
     
     private static final long serialVersionUID = 1L;
     private BankInterface bankService;
+    private boolean isConnected = false;
     
     // Components
     private JTextField txtServerHost;
     private JButton btnConnect;
+    private JButton btnDisconnect;
     private JLabel lblStatus;
+    private JProgressBar progressBar;
     
     private JComboBox<String> cboFromAccount;
     private JComboBox<String> cboToAccount;
@@ -45,12 +52,46 @@ public class BankClientUI extends JFrame {
     public BankClientUI() {
         currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
         initComponents();
+        setupWindowListener();
+    }
+    
+    /**
+     * Cleanup khi đóng cửa sổ
+     */
+    private void setupWindowListener() {
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                cleanup();
+            }
+        });
+    }
+    
+    /**
+     * Dọn dẹp tài nguyên trước khi đóng
+     */
+    private void cleanup() {
+        if (isConnected) {
+            int choice = JOptionPane.showConfirmDialog(
+                this, 
+                "Bạn đang kết nối đến server. Ngắt kết nối và thoát?",
+                "Xác nhận thoát",
+                JOptionPane.YES_NO_OPTION
+            );
+            
+            if (choice == JOptionPane.YES_OPTION) {
+                disconnect();
+                System.exit(0);
+            }
+        } else {
+            System.exit(0);
+        }
     }
     
     private void initComponents() {
-        setTitle("Hệ thống chuyển khoản RMI");
-        setSize(900, 700);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setTitle("Hệ thống chuyển khoản RMI - Bank System v2.0");
+        setSize(950, 750);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Custom close handler
         setLocationRelativeTo(null);
         
         // Main panel
@@ -72,20 +113,46 @@ public class BankClientUI extends JFrame {
     }
     
     private JPanel createConnectionPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBorder(BorderFactory.createTitledBorder("Kết nối Server"));
         
-        panel.add(new JLabel("Server Host:"));
-        txtServerHost = new JTextField("localhost", 15);
-        panel.add(txtServerHost);
+        // Top panel - Connection controls
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         
-        btnConnect = new JButton("Kết nối");
+        topPanel.add(new JLabel("Server Host:"));
+        txtServerHost = new JTextField("localhost", 20);
+        txtServerHost.setToolTipText("Nhập IP hoặc hostname của RMI Server");
+        topPanel.add(txtServerHost);
+        
+        btnConnect = new JButton("🔌 Kết nối");
         btnConnect.addActionListener(e -> connectToServer());
-        panel.add(btnConnect);
+        btnConnect.setBackground(new Color(76, 175, 80));
+        btnConnect.setForeground(Color.WHITE);
+        btnConnect.setFocusPainted(false);
+        topPanel.add(btnConnect);
         
-        lblStatus = new JLabel("Chưa kết nối");
+        btnDisconnect = new JButton("🔌 Ngắt kết nối");
+        btnDisconnect.addActionListener(e -> disconnect());
+        btnDisconnect.setEnabled(false);
+        btnDisconnect.setBackground(new Color(244, 67, 54));
+        btnDisconnect.setForeground(Color.WHITE);
+        btnDisconnect.setFocusPainted(false);
+        topPanel.add(btnDisconnect);
+        
+        lblStatus = new JLabel("⚫ Chưa kết nối");
         lblStatus.setForeground(Color.RED);
-        panel.add(lblStatus);
+        lblStatus.setFont(new Font("Arial", Font.BOLD, 12));
+        topPanel.add(lblStatus);
+        
+        panel.add(topPanel, BorderLayout.NORTH);
+        
+        // Progress bar
+        progressBar = new JProgressBar();
+        progressBar.setIndeterminate(false);
+        progressBar.setStringPainted(true);
+        progressBar.setString("");
+        progressBar.setVisible(false);
+        panel.add(progressBar, BorderLayout.SOUTH);
         
         return panel;
     }
@@ -221,34 +288,148 @@ public class BankClientUI extends JFrame {
     }
     
     private void connectToServer() {
-        try {
-            String host = txtServerHost.getText().trim();
-            if (host.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập địa chỉ server!", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
+        // Validate input
+        String host = txtServerHost.getText().trim();
+        if (host.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Vui lòng nhập địa chỉ server!\n\nVí dụ: localhost hoặc 192.168.1.100", 
+                "Lỗi nhập liệu", 
+                JOptionPane.ERROR_MESSAGE);
+            txtServerHost.requestFocus();
+            return;
+        }
+        
+        // Show progress
+        showProgress(true, "Đang kết nối đến " + host + "...");
+        setControlsEnabled(false);
+        
+        // Connect in background thread
+        SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
+            private String errorMessage = "";
+            
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                try {
+                    Registry registry = LocateRegistry.getRegistry(host, 1099);
+                    bankService = (BankInterface) registry.lookup("BankService");
+                    
+                    // Test connection
+                    bankService.getAllAccounts();
+                    
+                    return true;
+                } catch (Exception e) {
+                    errorMessage = e.getMessage();
+                    return false;
+                }
             }
             
-            Registry registry = LocateRegistry.getRegistry(host, 1099);
-            bankService = (BankInterface) registry.lookup("BankService");
-            
-            lblStatus.setText("Đã kết nối");
-            lblStatus.setForeground(new Color(0, 150, 0));
-            btnConnect.setEnabled(false);
-            btnTransfer.setEnabled(true);
-            btnRefresh.setEnabled(true);
-            btnCreateAccount.setEnabled(true);
-            
-            loadAccounts();
-            
-            JOptionPane.showMessageDialog(this, "Kết nối server thành công!", 
-                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
-            
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Không thể kết nối server: " + e.getMessage(), 
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
+            @Override
+            protected void done() {
+                showProgress(false, "");
+                
+                try {
+                    if (get()) {
+                        // Success
+                        isConnected = true;
+                        lblStatus.setText("🟢 Đã kết nối: " + host);
+                        lblStatus.setForeground(new Color(0, 150, 0));
+                        
+                        btnConnect.setEnabled(false);
+                        btnDisconnect.setEnabled(true);
+                        txtServerHost.setEnabled(false);
+                        
+                        btnTransfer.setEnabled(true);
+                        btnRefresh.setEnabled(true);
+                        btnCreateAccount.setEnabled(true);
+                        
+                        loadAccounts();
+                        
+                        JOptionPane.showMessageDialog(BankClientUI.this, 
+                            "✓ Kết nối server thành công!\n\n" +
+                            "Server: " + host + ":1099\n" +
+                            "Service: BankService",
+                            "Kết nối thành công", 
+                            JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        // Failure
+                        JOptionPane.showMessageDialog(BankClientUI.this, 
+                            "❌ Không thể kết nối đến server!\n\n" +
+                            "Server: " + host + ":1099\n" +
+                            "Lỗi: " + errorMessage + "\n\n" +
+                            "Vui lòng kiểm tra:\n" +
+                            "• Server đã chạy chưa?\n" +
+                            "• Địa chỉ IP có đúng không?\n" +
+                            "• Firewall đã mở port 1099 chưa?",
+                            "Lỗi kết nối", 
+                            JOptionPane.ERROR_MESSAGE);
+                        
+                        setControlsEnabled(true);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    setControlsEnabled(true);
+                }
+            }
+        };
+        
+        worker.execute();
+    }
+    
+    /**
+     * Ngắt kết nối khỏi server
+     */
+    private void disconnect() {
+        if (!isConnected) {
+            return;
         }
+        
+        int choice = JOptionPane.showConfirmDialog(this,
+            "Bạn có chắc muốn ngắt kết nối khỏi server?",
+            "Xác nhận ngắt kết nối",
+            JOptionPane.YES_NO_OPTION);
+        
+        if (choice == JOptionPane.YES_OPTION) {
+            bankService = null;
+            isConnected = false;
+            
+            lblStatus.setText("⚫ Chưa kết nối");
+            lblStatus.setForeground(Color.RED);
+            
+            btnConnect.setEnabled(true);
+            btnDisconnect.setEnabled(false);
+            txtServerHost.setEnabled(true);
+            
+            btnTransfer.setEnabled(false);
+            btnRefresh.setEnabled(false);
+            btnCreateAccount.setEnabled(false);
+            
+            // Clear data
+            tableModel.setRowCount(0);
+            cboFromAccount.removeAllItems();
+            cboToAccount.removeAllItems();
+            
+            JOptionPane.showMessageDialog(this,
+                "Đã ngắt kết nối khỏi server.",
+                "Ngắt kết nối",
+                JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+    
+    /**
+     * Hiển thị/ẩn progress bar
+     */
+    private void showProgress(boolean show, String message) {
+        progressBar.setVisible(show);
+        progressBar.setIndeterminate(show);
+        progressBar.setString(message);
+    }
+    
+    /**
+     * Enable/Disable controls
+     */
+    private void setControlsEnabled(boolean enabled) {
+        btnConnect.setEnabled(enabled);
+        txtServerHost.setEnabled(enabled);
     }
     
     private void loadAccounts() {
@@ -282,118 +463,290 @@ public class BankClientUI extends JFrame {
     }
     
     private void performTransfer() {
+        // Validate input
+        if (cboFromAccount.getSelectedItem() == null || cboToAccount.getSelectedItem() == null) {
+            JOptionPane.showMessageDialog(this, 
+                "❌ Vui lòng chọn tài khoản nguồn và đích!", 
+                "Lỗi nhập liệu", 
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        if (txtAmount.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "❌ Vui lòng nhập số tiền cần chuyển!", 
+                "Lỗi nhập liệu", 
+                JOptionPane.ERROR_MESSAGE);
+            txtAmount.requestFocus();
+            return;
+        }
+        
+        String fromAccountText = (String) cboFromAccount.getSelectedItem();
+        String toAccountText = (String) cboToAccount.getSelectedItem();
+        
+        String fromAccount = fromAccountText.split(" - ")[0];
+        String toAccount = toAccountText.split(" - ")[0];
+        
+        if (fromAccount.equals(toAccount)) {
+            JOptionPane.showMessageDialog(this, 
+                "❌ Không thể chuyển khoản cho chính mình!", 
+                "Lỗi giao dịch", 
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        double amount;
         try {
-            // Validate input
-            if (cboFromAccount.getSelectedItem() == null || cboToAccount.getSelectedItem() == null) {
-                JOptionPane.showMessageDialog(this, "Vui lòng chọn tài khoản!", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            
-            if (txtAmount.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập số tiền!", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            
-            String fromAccountText = (String) cboFromAccount.getSelectedItem();
-            String toAccountText = (String) cboToAccount.getSelectedItem();
-            
-            String fromAccount = fromAccountText.split(" - ")[0];
-            String toAccount = toAccountText.split(" - ")[0];
-            
-            if (fromAccount.equals(toAccount)) {
-                JOptionPane.showMessageDialog(this, "Không thể chuyển cho chính mình!", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            
-            double amount = Double.parseDouble(txtAmount.getText().trim());
+            amount = Double.parseDouble(txtAmount.getText().trim().replace(",", ""));
             
             if (amount <= 0) {
-                JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, 
+                    "❌ Số tiền phải lớn hơn 0!", 
+                    "Lỗi nhập liệu", 
+                    JOptionPane.ERROR_MESSAGE);
+                txtAmount.requestFocus();
                 return;
             }
             
-            // Confirm
-            int confirm = JOptionPane.showConfirmDialog(this, 
-                    String.format("Xác nhận chuyển %.2f VND từ %s đến %s?", 
-                            amount, fromAccountText, toAccountText),
-                    "Xác nhận", JOptionPane.YES_NO_OPTION);
-            
-            if (confirm != JOptionPane.YES_OPTION) {
+            if (amount > 1000000000) { // 1 billion
+                JOptionPane.showMessageDialog(this,
+                    "❌ Số tiền quá lớn! Tối đa 1,000,000,000 VND",
+                    "Lỗi nhập liệu",
+                    JOptionPane.ERROR_MESSAGE);
                 return;
-            }
-            
-            // Perform transfer
-            boolean success = bankService.transfer(fromAccount, toAccount, amount);
-            
-            if (success) {
-                JOptionPane.showMessageDialog(this, 
-                        "Chuyển khoản thành công!\nĐã cập nhật đồng bộ trên 2 database.", 
-                        "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                txtAmount.setText("");
-                loadAccounts();
-            } else {
-                JOptionPane.showMessageDialog(this, 
-                        "Chuyển khoản thất bại! Có thể do số dư không đủ.", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
             
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!", 
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage(), 
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "❌ Số tiền không hợp lệ!\n\nVui lòng nhập số (ví dụ: 1000000)", 
+                "Lỗi nhập liệu", 
+                JOptionPane.ERROR_MESSAGE);
+            txtAmount.requestFocus();
+            return;
         }
+        
+        // Confirm
+        int confirm = JOptionPane.showConfirmDialog(this, 
+            String.format(
+                "Xác nhận chuyển khoản:\n\n" +
+                "Từ: %s\n" +
+                "Đến: %s\n" +
+                "Số tiền: %,.0f VND\n\n" +
+                "Tiếp tục?",
+                fromAccountText, toAccountText, amount
+            ),
+            "⚠️ Xác nhận giao dịch", 
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE);
+        
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        
+        // Show progress
+        final double finalAmount = amount;
+        final String finalFromAccount = fromAccount;
+        final String finalToAccount = toAccount;
+        
+        showProgress(true, "Đang xử lý giao dịch...");
+        btnTransfer.setEnabled(false);
+        btnRefresh.setEnabled(false);
+        
+        // Perform transfer in background
+        SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
+            private String errorMsg = "";
+            
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                try {
+                    return bankService.transfer(finalFromAccount, finalToAccount, finalAmount);
+                } catch (Exception e) {
+                    errorMsg = e.getMessage();
+                    return false;
+                }
+            }
+            
+            @Override
+            protected void done() {
+                showProgress(false, "");
+                btnTransfer.setEnabled(true);
+                btnRefresh.setEnabled(true);
+                
+                try {
+                    if (get()) {
+                        JOptionPane.showMessageDialog(BankClientUI.this, 
+                            String.format(
+                                "✅ Chuyển khoản thành công!\n\n" +
+                                "Số tiền: %,.0f VND\n" +
+                                "Từ: %s\n" +
+                                "Đến: %s\n\n" +
+                                "✓ Đã cập nhật đồng bộ trên 2 database.",
+                                finalAmount, finalFromAccount, finalToAccount
+                            ),
+                            "Giao dịch thành công", 
+                            JOptionPane.INFORMATION_MESSAGE);
+                        
+                        txtAmount.setText("");
+                        loadAccounts();
+                    } else {
+                        JOptionPane.showMessageDialog(BankClientUI.this, 
+                            "❌ Chuyển khoản thất bại!\n\n" +
+                            "Nguyên nhân có thể:\n" +
+                            "• Số dư không đủ\n" +
+                            "• Tài khoản không tồn tại\n" +
+                            "• Lỗi kết nối database\n\n" +
+                            "Chi tiết: " + errorMsg,
+                            "Giao dịch thất bại", 
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(BankClientUI.this,
+                        "❌ Lỗi: " + e.getMessage(),
+                        "Lỗi",
+                        JOptionPane.ERROR_MESSAGE);
+                    e.printStackTrace();
+                }
+            }
+        };
+        
+        worker.execute();
     }
     
     private void createNewAccount() {
+        // Validate input
+        String accountNumber = txtNewAccountNumber.getText().trim();
+        String accountName = txtNewAccountName.getText().trim();
+        String balanceText = txtNewBalance.getText().trim();
+        
+        if (accountNumber.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "❌ Vui lòng nhập số tài khoản!", 
+                "Lỗi nhập liệu", 
+                JOptionPane.ERROR_MESSAGE);
+            txtNewAccountNumber.requestFocus();
+            return;
+        }
+        
+        if (accountName.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "❌ Vui lòng nhập tên chủ tài khoản!", 
+                "Lỗi nhập liệu", 
+                JOptionPane.ERROR_MESSAGE);
+            txtNewAccountName.requestFocus();
+            return;
+        }
+        
+        if (balanceText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "❌ Vui lòng nhập số dư ban đầu!", 
+                "Lỗi nhập liệu", 
+                JOptionPane.ERROR_MESSAGE);
+            txtNewBalance.requestFocus();
+            return;
+        }
+        
+        double balance;
         try {
-            String accountNumber = txtNewAccountNumber.getText().trim();
-            String accountName = txtNewAccountName.getText().trim();
-            String balanceText = txtNewBalance.getText().trim();
-            
-            if (accountNumber.isEmpty() || accountName.isEmpty() || balanceText.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng điền đầy đủ thông tin!", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            
-            double balance = Double.parseDouble(balanceText);
+            balance = Double.parseDouble(balanceText.replace(",", ""));
             
             if (balance < 0) {
-                JOptionPane.showMessageDialog(this, "Số dư không thể âm!", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            
-            boolean success = bankService.createAccount(accountNumber, accountName, balance);
-            
-            if (success) {
                 JOptionPane.showMessageDialog(this, 
-                        "Tạo tài khoản thành công!\nĐã cập nhật đồng bộ trên 2 database.", 
-                        "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                txtNewAccountNumber.setText("");
-                txtNewAccountName.setText("");
-                txtNewBalance.setText("0");
-                loadAccounts();
-            } else {
-                JOptionPane.showMessageDialog(this, "Tạo tài khoản thất bại!", 
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    "❌ Số dư không thể âm!", 
+                    "Lỗi nhập liệu", 
+                    JOptionPane.ERROR_MESSAGE);
+                txtNewBalance.requestFocus();
+                return;
             }
             
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Số dư không hợp lệ!", 
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage(), 
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "❌ Số dư không hợp lệ!\n\nVui lòng nhập số (ví dụ: 1000000)", 
+                "Lỗi nhập liệu", 
+                JOptionPane.ERROR_MESSAGE);
+            txtNewBalance.requestFocus();
+            return;
         }
+        
+        // Confirm
+        int confirm = JOptionPane.showConfirmDialog(this,
+            String.format(
+                "Xác nhận tạo tài khoản mới:\n\n" +
+                "Số TK: %s\n" +
+                "Tên: %s\n" +
+                "Số dư: %,.0f VND\n\n" +
+                "Tiếp tục?",
+                accountNumber, accountName, balance
+            ),
+            "⚠️ Xác nhận tạo tài khoản",
+            JOptionPane.YES_NO_OPTION);
+        
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        
+        // Show progress
+        final double finalBalance = balance;
+        showProgress(true, "Đang tạo tài khoản...");
+        btnCreateAccount.setEnabled(false);
+        
+        // Create account in background
+        SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
+            private String errorMsg = "";
+            
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                try {
+                    return bankService.createAccount(accountNumber, accountName, finalBalance);
+                } catch (Exception e) {
+                    errorMsg = e.getMessage();
+                    return false;
+                }
+            }
+            
+            @Override
+            protected void done() {
+                showProgress(false, "");
+                btnCreateAccount.setEnabled(true);
+                
+                try {
+                    if (get()) {
+                        JOptionPane.showMessageDialog(BankClientUI.this, 
+                            String.format(
+                                "✅ Tạo tài khoản thành công!\n\n" +
+                                "Số TK: %s\n" +
+                                "Tên: %s\n" +
+                                "Số dư: %,.0f VND\n\n" +
+                                "✓ Đã cập nhật đồng bộ trên 2 database.",
+                                accountNumber, accountName, finalBalance
+                            ),
+                            "Tạo tài khoản thành công", 
+                            JOptionPane.INFORMATION_MESSAGE);
+                        
+                        txtNewAccountNumber.setText("");
+                        txtNewAccountName.setText("");
+                        txtNewBalance.setText("0");
+                        loadAccounts();
+                    } else {
+                        JOptionPane.showMessageDialog(BankClientUI.this, 
+                            "❌ Tạo tài khoản thất bại!\n\n" +
+                            "Nguyên nhân có thể:\n" +
+                            "• Số tài khoản đã tồn tại\n" +
+                            "• Lỗi kết nối database\n\n" +
+                            "Chi tiết: " + errorMsg,
+                            "Tạo tài khoản thất bại", 
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(BankClientUI.this,
+                        "❌ Lỗi: " + e.getMessage(),
+                        "Lỗi",
+                        JOptionPane.ERROR_MESSAGE);
+                    e.printStackTrace();
+                }
+            }
+        };
+        
+        worker.execute();
     }
     
     public static void main(String[] args) {
